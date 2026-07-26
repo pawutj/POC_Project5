@@ -9,6 +9,7 @@ func _init(p_heal_power: float = 0.8) -> void:
 	skill_name = "Heal"
 	target_rule = BattleEnums.TargetRule.LOWEST_HP_ALLY
 	heal_power = p_heal_power
+	orb_cost = 2
 
 func apply(caster: BattleUnit, targets: Array[BattleUnit]) -> String:
 	var parts: Array[String] = []

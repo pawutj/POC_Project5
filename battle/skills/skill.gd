@@ -6,6 +6,10 @@ extends Resource
 
 @export var skill_name: String = "Skill"
 @export var target_rule: BattleEnums.TargetRule = BattleEnums.TargetRule.FRONT_ENEMY
+## How many matched same-color orbs the player must select on the 7x2 board
+## to trigger this skill (1, 2, or 4 — see BattleManager.resolve_orb_selection).
+## Basic attacks need 1; special skills need 2; ultimates need 4.
+@export var orb_cost: int = 1
 
 ## Resolves target_rule relative to the caster's team so the same Skill
 ## instance behaves correctly whether cast by a player unit or an enemy.
@@ -24,6 +28,8 @@ func resolve_targets(caster: BattleUnit, context: BattleContext) -> Array[Battle
 			var lowest := context.get_lowest_hp_unit(caster.team)
 			if lowest != null:
 				targets.append(lowest)
+		BattleEnums.TargetRule.ALL_ALLIES:
+			targets = context.get_alive_units(caster.team)
 	return targets
 
 ## Applies this skill's effect to the given targets. Returns a human-readable

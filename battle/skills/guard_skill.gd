@@ -7,6 +7,7 @@ extends Skill
 func _init() -> void:
 	skill_name = "Guard"
 	target_rule = BattleEnums.TargetRule.SELF
+	orb_cost = 2
 
 func apply(caster: BattleUnit, targets: Array[BattleUnit]) -> String:
 	for target in targets:

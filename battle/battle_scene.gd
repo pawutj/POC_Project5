@@ -39,12 +39,13 @@ func _ready() -> void:
 	add_child(battle_manager)
 
 	hud.setup(player_units)
-	hud.action_chosen.connect(func(actor: BattleUnit, skill: Skill) -> void:
-		battle_manager.submit_player_action(actor, skill)
+	hud.orb_selection_confirmed.connect(func(indices: Array[int]) -> void:
+		battle_manager.submit_orb_selection(indices)
 	)
 	battle_manager.log_message.connect(hud.append_log)
 	battle_manager.log_message.connect(func(_text: String) -> void: _refresh_fronts())
 	battle_manager.action_pool_changed.connect(hud.update_action_pool)
+	battle_manager.orb_grid_changed.connect(hud.on_orb_grid_changed)
 	battle_manager.phase_changed.connect(hud.on_phase_changed)
 	battle_manager.phase_changed.connect(func(_phase: BattleManager.Phase) -> void: _refresh_fronts())
 	battle_manager.battle_ended.connect(hud.show_result)

@@ -11,5 +11,5 @@ func exit(_manager: BattleManager) -> void:
 	pass
 
 ## Only PlayerPhaseState responds to this; other phases ignore stray input.
-func handle_player_action(_manager: BattleManager, _actor: BattleUnit, _skill: Skill) -> void:
+func handle_orb_selection(_manager: BattleManager, _indices: Array[int]) -> void:
 	pass

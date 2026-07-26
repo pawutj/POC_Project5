@@ -7,18 +7,28 @@ interactive UI built entirely in code (no art assets yet).
 ## Mechanics
 
 - **Turn structure**: the player always acts first. The party shares an
-  **action pool** (3 actions — one per party member) that can be spent on
-  *any* character in *any* combination (e.g. DPS twice, Support once). Once
-  the pool is empty, every living enemy acts once (Enemy phase), then the
-  pool refills and control returns to the player. Repeats until one side is
-  wiped.
+  **action pool** (3 actions — one per party member). Once the pool is
+  empty, every living enemy acts once (Enemy phase), then the pool refills
+  and control returns to the player. Repeats until one side is wiped.
+- **Orb board**: a 7x2 grid of 14 orbs, each randomly colored one of the 3
+  player roles (Tank/DPS/Support), is shown each player phase. Per action,
+  the player clicks same-colored orbs — **1, 2, or 4** of them — then
+  confirms ("Enter"). The color picked selects *which* living unit acts
+  (one unit per role); the count picked selects *which* of that unit's
+  skills fires, matched against the skill's `orb_cost`:
+  - 1 orb -> Action A (Basic Attack)
+  - 2 orbs -> Action B (role special)
+  - 4 orbs -> Action C (role ultimate)
+  The orbs spent on a confirmed action are replaced with fresh random
+  colors immediately (match-3 style); the rest of the board is untouched.
 - **Targeting**: attacks auto-target the **front-most living unit** of the
   opposing formation by default (formation = array order, index 0 = front).
-  No manual target picking — the player only chooses actor + skill.
+  No manual target picking — the orb selection only chooses actor + skill.
   Skills can override the default rule:
   - `FRONT_ENEMY` – default, single target
   - `ALL_ENEMIES` – AoE (DPS's Sweeping Strike)
   - `LOWEST_HP_ALLY` – auto-heal target (Support's Heal)
+  - `ALL_ALLIES` – party-wide (Support's Mass Heal)
   - `SELF` – self-buff (Tank's Guard)
 - **Formation matters**: default player order is `[Tank, DPS, Support]`, so
   the Tank absorbs enemy hits first without needing an explicit taunt
@@ -28,12 +38,12 @@ interactive UI built entirely in code (no art assets yet).
 
 ## Skill roster
 
-| Unit | Basic Attack | Special |
-|---|---|---|
-| Tank | ×1.0 power, FRONT_ENEMY | Guard — SELF, halves the next hit taken |
-| DPS | ×1.2 power, FRONT_ENEMY | Sweeping Strike — ×0.7 power, ALL_ENEMIES |
-| Support | ×0.6 power, FRONT_ENEMY | Heal — restores HP, LOWEST_HP_ALLY |
-| Slime ×3 | ×0.8 power, FRONT_ENEMY (= front player unit) | — |
+| Unit | A (1 orb) | B (2 orbs) | C (4 orbs) |
+|---|---|---|---|
+| Tank | Attack ×1.0, FRONT_ENEMY | Guard — SELF, halves next hit | Shield Bash — ×1.6 FRONT_ENEMY + self Guard |
+| DPS | Attack ×1.2, FRONT_ENEMY | Sweeping Strike ×0.7, ALL_ENEMIES | Execute — ×2.5 FRONT_ENEMY |
+| Support | Attack ×0.6, FRONT_ENEMY | Heal — LOWEST_HP_ALLY | Mass Heal — ALL_ALLIES |
+| Slime ×3 | ×0.8 power, FRONT_ENEMY (= front player unit) | — | — |
 
 ## Architecture
 
@@ -51,29 +61,32 @@ battle/
     damage_calculator.gd         Single damage formula, isolated for tuning
 
   skills/                    # Command-like objects: resolve targets + apply effect
-    skill.gd                    Abstract base (target_rule, resolve_targets, apply)
+    skill.gd                    Abstract base (target_rule, resolve_targets, apply, orb_cost)
     damaging_skill.gd            Template Method: shared damage-application loop
-    basic_attack_skill.gd        FRONT_ENEMY — reused by every unit incl. Slimes
-    sweeping_strike_skill.gd     ALL_ENEMIES (DPS AoE)
-    heal_skill.gd                 LOWEST_HP_ALLY (Support)
-    guard_skill.gd                 SELF (Tank)
+    basic_attack_skill.gd        FRONT_ENEMY — reused by every unit incl. Slimes (orb_cost 1)
+    sweeping_strike_skill.gd     ALL_ENEMIES (DPS special, orb_cost 2)
+    heal_skill.gd                 LOWEST_HP_ALLY (Support special, orb_cost 2)
+    guard_skill.gd                 SELF (Tank special, orb_cost 2)
+    shield_bash_skill.gd           FRONT_ENEMY + self Guard (Tank ultimate, orb_cost 4)
+    execute_skill.gd                FRONT_ENEMY, high power (DPS ultimate, orb_cost 4)
+    mass_heal_skill.gd              ALL_ALLIES (Support ultimate, orb_cost 4)
 
   ai/                        # Strategy pattern for enemy decisions
     battle_ai.gd                 Interface: choose_skill(unit, context)
     simple_enemy_ai.gd            Always basic attack
 
   states/                    # State pattern for the battle flow
-    battle_state.gd               Base: enter/exit/handle_player_action
-    player_phase_state.gd          Owns the action pool countdown
+    battle_state.gd               Base: enter/exit/handle_orb_selection
+    player_phase_state.gd          Owns the action pool countdown + orb-selection resolution
     enemy_phase_state.gd            Iterates living enemies with a short delay
     battle_end_state.gd             Terminal state, emits victory/defeat
 
   unit_factory.gd            # Single place that assembles stats + skill loadout per role
-  battle_manager.gd          # Orchestrator (extends Node): owns state machine + signals
+  battle_manager.gd          # Orchestrator (extends Node): owns state machine, orb board, signals
 
   ui/                        # Presentation only — observes signals, mutates nothing
     unit_view.gd                 Name/HP/front-marker display for one unit
-    battle_hud.gd                  Actor/skill buttons, action counter, log, result overlay
+    battle_hud.gd                  7x2 orb grid, selection preview, action counter, log, result overlay
 
   battle_scene.gd            # Composition root: builds everything and wires signals
   battle_scene.tscn          # Single Control root + script; children built in code
@@ -91,9 +104,15 @@ battle/
   Slimes (just constructed with a different power multiplier each time).
 - **Signals decouple domain from UI.** `BattleUnit` emits
   `health_changed`/`died`; `BattleManager` emits `phase_changed`,
-  `log_message`, `action_pool_changed`, `battle_ended`. `UnitView` and
-  `BattleHUD` only *observe* these — `battle_scene.gd` is the only file
-  that references all three layers and wires HUD input → BattleManager.
+  `log_message`, `action_pool_changed`, `orb_grid_changed`, `battle_ended`.
+  `UnitView` and `BattleHUD` only *observe* these — `battle_scene.gd` is the
+  only file that references all three layers and wires HUD input →
+  BattleManager.
+- **The orb board gates both actor and skill in one query.**
+  `BattleManager.resolve_orb_selection()` takes the board indices the
+  player clicked and resolves them to a living unit of the matching role
+  plus whichever of that unit's skills has a matching `orb_cost` — no
+  separate actor-picking step needed since each role has exactly one unit.
 - **Guard is intentionally minimal.** A single `is_guarding` flag on
   `BattleUnit`, consumed by the next `take_damage()` call — not a full
   status-effect system, since nothing else in this POC needs one (YAGNI).
@@ -107,10 +126,11 @@ To try it:
 2. Press **Play** (F5) — `run/main_scene` is already set to
    `res://battle/battle_scene.tscn`.
 3. Expected: 3 Slime boxes on top, 3 player boxes on bottom, an
-   "Actions: 3/3" counter, actor buttons, skill buttons (after picking an
-   actor), live HP bars, a scrolling battle log, a "▶ FRONT" marker on the
-   front unit of each side, and a VICTORY!/DEFEAT... overlay when one side
-   is wiped.
+   "Actions: 3/3" counter, a 7x2 grid of colored orb buttons, a selection
+   preview label + "Enter" button, live HP bars, a scrolling battle log, a
+   "▶ FRONT" marker on the front unit of each side, and a VICTORY!/DEFEAT...
+   overlay when one side is wiped. Click same-colored orbs (1, 2, or 4 of
+   them), then press Enter to fire that role's action.
 
 If anything errors or behaves unexpectedly in-editor, paste the error here
 to get it fixed.

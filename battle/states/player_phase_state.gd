@@ -9,11 +9,18 @@ func enter(manager: BattleManager) -> void:
 	actions_remaining = manager.action_pool_size
 	manager.phase_changed.emit(BattleManager.Phase.PLAYER)
 	manager.action_pool_changed.emit(actions_remaining, manager.action_pool_size)
+	manager.fill_orb_grid()
 
-func handle_player_action(manager: BattleManager, actor: BattleUnit, skill: Skill) -> void:
-	if not actor.is_alive():
+## Board-gated: the selected indices must resolve to a living actor and a
+## skill matching the selected orb count (see BattleManager.resolve_orb_selection).
+func handle_orb_selection(manager: BattleManager, indices: Array[int]) -> void:
+	if actions_remaining <= 0:
 		return
-	var ended := manager.execute_action(actor, skill)
+	var resolved := manager.resolve_orb_selection(indices)
+	if resolved.is_empty():
+		return
+	var ended := manager.execute_action(resolved.actor, resolved.skill)
+	manager.refill_orbs(indices)
 	if ended:
 		return
 	actions_remaining -= 1

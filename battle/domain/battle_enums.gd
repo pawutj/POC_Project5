@@ -14,6 +14,7 @@ enum TargetRule {
 	ALL_ENEMIES,
 	SELF,
 	LOWEST_HP_ALLY,
+	ALL_ALLIES,
 }
 
 ## Cosmetic/identification only (e.g. UI color-coding). Battle logic never

@@ -11,7 +11,7 @@ static func create_tank(id: String) -> BattleUnit:
 	stats.def = 12
 	stats.spd = 8
 	var unit := BattleUnit.new(id, "Tank", BattleEnums.Team.PLAYER, BattleEnums.Role.TANK, stats)
-	unit.skills = [BasicAttackSkill.new(1.0), GuardSkill.new()]
+	unit.skills = [BasicAttackSkill.new(1.0), GuardSkill.new(), ShieldBashSkill.new()]
 	return unit
 
 static func create_dps(id: String) -> BattleUnit:
@@ -21,7 +21,7 @@ static func create_dps(id: String) -> BattleUnit:
 	stats.def = 6
 	stats.spd = 12
 	var unit := BattleUnit.new(id, "DPS", BattleEnums.Team.PLAYER, BattleEnums.Role.DPS, stats)
-	unit.skills = [BasicAttackSkill.new(1.2), SweepingStrikeSkill.new(0.7)]
+	unit.skills = [BasicAttackSkill.new(1.2), SweepingStrikeSkill.new(0.7), ExecuteSkill.new()]
 	return unit
 
 static func create_support(id: String) -> BattleUnit:
@@ -31,7 +31,7 @@ static func create_support(id: String) -> BattleUnit:
 	stats.def = 5
 	stats.spd = 10
 	var unit := BattleUnit.new(id, "Support", BattleEnums.Team.PLAYER, BattleEnums.Role.SUPPORT, stats)
-	unit.skills = [BasicAttackSkill.new(0.6), HealSkill.new(0.8)]
+	unit.skills = [BasicAttackSkill.new(0.6), HealSkill.new(0.8), MassHealSkill.new()]
 	return unit
 
 static func create_slime(id: String) -> BattleUnit:

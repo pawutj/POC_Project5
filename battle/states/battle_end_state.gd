@@ -1,7 +1,7 @@
 class_name BattleEndState
 extends BattleState
 ## Terminal state. Player input is ignored automatically since this class
-## doesn't override handle_player_action (base is a no-op).
+## doesn't override handle_orb_selection (base is a no-op).
 
 var victory: bool
 
